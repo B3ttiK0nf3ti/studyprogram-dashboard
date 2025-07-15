@@ -11,7 +11,7 @@
     # Important: Make sure to check “Add Python to PATH” during installation. 
 
 2. Download the repository
-    # Clone with git clone https://github.com/your-username/your-repo.git 
+    # Clone with git clone https://github.com/B3ttiK0nf3ti/studyprogram-dashboard.git 
     or
     # Download the ZIP file from GitHub and extract it.
 
