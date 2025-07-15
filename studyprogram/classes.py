@@ -1,5 +1,6 @@
 from enum import Enum
 from datetime import date
+import re
 from typing import List
 
 class ModuleStatus(Enum):
@@ -51,6 +52,7 @@ class Module:
     """
     def __init__(self, title: str, ects: int, status: ModuleStatus):
         self.title = title
+        self.normalized_title = re.sub(r'\s+', ' ', title.strip().lower())
         self.ects = ects
         self.status = status
         self.exam_performances: List[ExamPerformance] = []
@@ -105,12 +107,12 @@ class Module:
                 hours=learning_time["hours"]
             ))
         return module
-
-    def set_exam_performance(self, performance: ExamPerformance):
+    
+    def add_exam_performance(self, performance: ExamPerformance):
         """
-        Set the exam performance for the module.
+        Add an exam performance to the module.
         """
-        self.exam_performance = performance
+        self.exam_performances.append(performance)
 
     def add_learning_time(self, learning_time: LearningTime):
         """
@@ -119,16 +121,14 @@ class Module:
         self.learning_times.append(learning_time)
 
     def __repr__(self):
-        return f"Module(name={self.name}, status={self.status}, exam_performance={self.exam_performance}, learning_times={self.learning_times}, ects={self.ects})"
+        return f"Module(name={self.title}, status={self.status}, exam_performances={self.exam_performances}, learning_times={self.learning_times}, ects={self.ects})"
 
 class Semester:
     """
     Class representing a semester in a course.
     """
-    def __init__(self, number: int, start_date: date = None, end_date: date = None):
+    def __init__(self, number: int):
         self.number = number
-        self.start_date = start_date
-        self.end_date = end_date
         self.modules: List[Module] = []
 
     def add_module(self, module: Module):
@@ -142,6 +142,24 @@ class Semester:
         Get the list of modules in the semester.
         """
         return self.modules
+    
+    def to_dict(self) -> dict:
+        return {
+            "number": self.number,
+            "modules": [module.to_dict() for module in self.modules]
+        }
+    
+    @staticmethod
+    def from_dict(data: dict):  
+        """
+        Create a Semester instance from a dictionary representation.
+        """
+        semester = Semester(
+            number=data["number"]
+        )
+        for module_data in data.get("modules", []):
+            semester.add_module(Module.from_dict(module_data))
+        return semester
 
     def __repr__(self):
         return f"Semester(number={self.number}, modules={self.modules})"
@@ -159,14 +177,37 @@ class StudyProgram:
         """
         Calculate the progress of the study program based on completed ECTS.
         """
-        passed_modules = 0
-        total_modules = 0
+        passed_ects = 0
+        total_ects = 0
         for semester in self.semesters:
-            for module in semester.getModules():
-                total_modules += 1
+            for module in semester.get_modules():
+                total_ects += module.ects
                 if module.status == ModuleStatus.PASSED:
-                    passed_modules += 1
-        return (passed_modules / total_modules) * 100 if total_modules > 0 else 0
+                    passed_ects += module.ects
+        return (passed_ects / total_ects) * 100 if total_ects > 0 else 0
+    
+    def to_dict(self) -> dict:
+        """
+        Convert the study program to a dictionary representation.
+        """
+        return {
+            "name": self.name,
+            "regular_study_period": self.regular_study_period,
+            "semesters": [semester.to_dict() for semester in self.semesters]
+        }
+
+    @staticmethod  
+    def from_dict(data: dict):
+        """
+        Create a StudyProgram instance from a dictionary representation.
+        """
+        study_program = StudyProgram(
+            name=data["name"],
+            regular_study_period=data["regular_study_period"]
+        )
+        for semester_data in data.get("semesters", []):
+            study_program.semesters.append(Semester.from_dict(semester_data))
+        return study_program
 
     def __repr__(self):
         return f"StudyProgram(name={self.name}, semesters={self.semesters}, regular_study_period={self.regular_study_period})"
